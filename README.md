@@ -1,15 +1,16 @@
-# .NET State Machine Service
+# Grant Application & Funding Lifecycle Management System
 
-A minimal backend service in .NET 8 for defining and running configurable state machine workflows with real-time state transitions and comprehensive validation.
+A .NET 8 state machine service for managing research grant applications and funding workflows with real-time state transitions, compliance tracking, and comprehensive validation - designed for research institutions and funding organizations.
 
 ## Features
-- Define custom workflow schemas (states + actions) with validation
-- Create and manage workflow instances with state tracking
-- Execute actions to transition between states with full business rule enforcement
-- In-memory persistence (no database required) with thread-safe operations
-- Interactive frontend for visual testing and API exploration
-- Comprehensive error handling with meaningful error messages
-- RESTful API design with proper HTTP status codes
+- **Grant Lifecycle Management**: Track applications from drafting to award/rejection
+- **Compliance Monitoring**: Built-in validation for fEC/TRAC and institutional requirements  
+- **Multi-Stage Review Process**: Support for internal reviews, revisions, and funder submissions
+- **Real-time Status Tracking**: Monitor grant applications through all stages
+- **Audit Trail**: Complete history of all state transitions with timestamps
+- **Thread-safe Operations**: Handle concurrent grant processing safely
+- **Interactive Management Interface**: Frontend for grant administrators and researchers
+- **RESTful API**: Standards-compliant endpoints for integration with existing systems
 
 
 ## Quick Start Instructions
@@ -98,94 +99,162 @@ curl http://localhost:5001/swagger
 | **GET** | `/instances/{id}` | Get instance details and history | 200, 404 |
 | **POST** | `/instances/{id}/execute` | Execute action on instance | 200, 400, 404 |
 
-## Understanding States and State Machines
+## Understanding Grant Application Lifecycle
 
-### What is a State Machine?
-A **state machine** is a computational model that:
-- Has a finite number of **states** (conditions or situations)
-- Can transition between states based on **actions** (events or triggers)
-- Has business rules about which transitions are allowed
-- Tracks the current state and history of changes
+### What is a Grant State Machine?
+A **grant application state machine** is a computational model that:
+- Tracks **grant applications** through their entire lifecycle
+- Enforces **compliance rules** and approval workflows
+- Maintains **audit trails** for institutional and funder requirements
+- Automates **status transitions** based on reviewer actions
 
-### State Types
-- **Initial State**: Where new workflow instances start (exactly 1 required)
-- **Intermediate States**: States that can transition to other states
-- **Final States**: Terminal states where the workflow ends (no outgoing actions)
+### Grant Application State Types
+- **Initial State**: Where new grant applications begin (Drafting)
+- **Review States**: States where applications undergo evaluation
+- **Revision States**: States requiring applicant input or corrections
+- **Final States**: Terminal states (Awarded, Rejected) where the process ends
 
-### Example: Order Processing States
+### Grant Application & Funding Lifecycle
 ```
-┌─────────┐    start-processing    ┌─────────────┐    complete-order    ┌───────────┐
-│ PENDING │ ────────────────────► │ PROCESSING  │ ──────────────────► │ COMPLETED │
-│(initial)│                       │             │                     │  (final)  │
-└─────────┘                       └─────────────┘                     └───────────┘
-     │                                   │
-     │            cancel-order           │
-     └───────────────────────────────────┼──────────────────────────────────────┐
-                                         │                                      │
-                                         ▼                                      ▼
-                                   ┌───────────┐ ◄──────────────────────────────┘
-                                   │ CANCELLED │
-                                   │  (final)  │
-                                   └───────────┘
+┌──────────┐    submit-application    ┌───────────┐    approve-internal    ┌─────────────────┐
+│ DRAFTING │ ─────────────────────► │ SUBMITTED │ ─────────────────► │ UNDER_INTERNAL_ │
+│(initial) │                        │           │                    │     REVIEW      │
+└──────────┘                        └───────────┘                    └─────────────────┘
+                                                                              │
+                                                                              │ request-revisions
+                                                                              ▼
+    ┌─────────────────┐ ◄─── submit-revisions ─── ┌─────────────────┐       │
+    │ SUBMITTED_TO_   │                           │ PENDING_        │ ◄─────┘
+    │    FUNDER       │                           │  REVISIONS      │
+    └─────────────────┘                           └─────────────────┘
+              │                                            │
+              │                                            │ submit-revisions
+              │                                            ▼
+              │                                   ┌─────────────────┐
+              │                                   │ UNDER_INTERNAL_ │
+              │                                   │     REVIEW      │
+              │                                   └─────────────────┘
+              │
+    ┌─────────┼─────────┐
+    │         │         │
+    ▼         ▼         ▼
+┌─────────┐ ┌─────────┐ ┌──────────┐
+│ AWARDED │ │REJECTED │ │WITHDRAWN │
+│ (final) │ │ (final) │ │ (final)  │
+└─────────┘ └─────────┘ └──────────┘
 ```
 
-## Step-by-Step API Building and State Transitions
+## Step-by-Step Grant Application API Implementation
 
-### Step 1: Create a Workflow Definition
+### Step 1: Create a Grant Lifecycle Workflow
 
-**Purpose**: Define the blueprint for your state machine with all possible states and actions.
+**Purpose**: Define the complete grant application lifecycle with all states, review processes, and compliance checkpoints.
 
 **Request:**
 ```bash
 curl -X POST http://localhost:5001/workflows \
   -H "Content-Type: application/json" \
   -d '{
-    "id": "order-workflow",
-    "name": "E-commerce Order Processing",
+    "id": "grant-lifecycle",
+    "name": "Research Grant Application & Funding Lifecycle",
     "states": [
       {
-        "id": "pending",
-        "name": "Order Pending",
+        "id": "drafting",
+        "name": "Application Drafting",
         "isInitial": true,
         "isFinal": false
       },
       {
-        "id": "processing", 
-        "name": "Order Processing",
+        "id": "submitted", 
+        "name": "Submitted for Review",
         "isInitial": false,
         "isFinal": false
       },
       {
-        "id": "completed",
-        "name": "Order Completed",
+        "id": "under_internal_review",
+        "name": "Under Internal Review (fEC/TRAC)",
+        "isInitial": false,
+        "isFinal": false
+      },
+      {
+        "id": "pending_revisions",
+        "name": "Pending Revisions",
+        "isInitial": false,
+        "isFinal": false
+      },
+      {
+        "id": "submitted_to_funder",
+        "name": "Submitted to External Funder",
+        "isInitial": false,
+        "isFinal": false
+      },
+      {
+        "id": "awarded",
+        "name": "Grant Awarded",
         "isInitial": false,
         "isFinal": true
       },
       {
-        "id": "cancelled",
-        "name": "Order Cancelled", 
+        "id": "rejected",
+        "name": "Grant Rejected",
+        "isInitial": false,
+        "isFinal": true
+      },
+      {
+        "id": "withdrawn",
+        "name": "Application Withdrawn",
         "isInitial": false,
         "isFinal": true
       }
     ],
     "actions": [
       {
-        "id": "start-processing",
-        "name": "Begin Order Processing",
-        "fromStates": ["pending"],
-        "toState": "processing"
+        "id": "submit-application",
+        "name": "Submit Application for Review",
+        "fromStates": ["drafting"],
+        "toState": "submitted"
       },
       {
-        "id": "complete-order",
-        "name": "Complete Order",
-        "fromStates": ["processing"],
-        "toState": "completed"
+        "id": "begin-internal-review",
+        "name": "Begin Internal Compliance Review",
+        "fromStates": ["submitted"],
+        "toState": "under_internal_review"
       },
       {
-        "id": "cancel-order",
-        "name": "Cancel Order",
-        "fromStates": ["pending", "processing"],
-        "toState": "cancelled"
+        "id": "request-revisions",
+        "name": "Request Revisions from Applicant",
+        "fromStates": ["under_internal_review"],
+        "toState": "pending_revisions"
+      },
+      {
+        "id": "submit-revisions",
+        "name": "Submit Revised Application",
+        "fromStates": ["pending_revisions"],
+        "toState": "under_internal_review"
+      },
+      {
+        "id": "approve-for-submission",
+        "name": "Approve for Funder Submission",
+        "fromStates": ["under_internal_review"],
+        "toState": "submitted_to_funder"
+      },
+      {
+        "id": "award-grant",
+        "name": "Grant Awarded by Funder",
+        "fromStates": ["submitted_to_funder"],
+        "toState": "awarded"
+      },
+      {
+        "id": "reject-grant",
+        "name": "Grant Rejected by Funder",
+        "fromStates": ["submitted_to_funder"],
+        "toState": "rejected"
+      },
+      {
+        "id": "withdraw-application",
+        "name": "Withdraw Application",
+        "fromStates": ["drafting", "submitted", "under_internal_review", "pending_revisions"],
+        "toState": "withdrawn"
       }
     ]
   }'
@@ -194,103 +263,158 @@ curl -X POST http://localhost:5001/workflows \
 **Response (201 Created):**
 ```json
 {
-  "id": "order-workflow",
-  "name": "E-commerce Order Processing",
+  "id": "grant-lifecycle",
+  "name": "Research Grant Application & Funding Lifecycle",
   "states": [
     {
-      "id": "pending",
-      "name": "Order Pending", 
+      "id": "drafting",
+      "name": "Application Drafting", 
       "isInitial": true,
       "isFinal": false
     },
     {
-      "id": "processing",
-      "name": "Order Processing",
+      "id": "submitted",
+      "name": "Submitted for Review",
       "isInitial": false, 
       "isFinal": false
     },
     {
-      "id": "completed",
-      "name": "Order Completed",
+      "id": "under_internal_review",
+      "name": "Under Internal Review (fEC/TRAC)",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "pending_revisions",
+      "name": "Pending Revisions",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "submitted_to_funder",
+      "name": "Submitted to External Funder",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "awarded", 
+      "name": "Grant Awarded",
       "isInitial": false,
       "isFinal": true
     },
     {
-      "id": "cancelled", 
-      "name": "Order Cancelled",
+      "id": "rejected",
+      "name": "Grant Rejected",
+      "isInitial": false,
+      "isFinal": true
+    },
+    {
+      "id": "withdrawn",
+      "name": "Application Withdrawn",
       "isInitial": false,
       "isFinal": true
     }
   ],
   "actions": [
     {
-      "id": "start-processing",
-      "name": "Begin Order Processing",
-      "fromStates": ["pending"],
-      "toState": "processing"
+      "id": "submit-application",
+      "name": "Submit Application for Review",
+      "fromStates": ["drafting"],
+      "toState": "submitted"
     },
     {
-      "id": "complete-order", 
-      "name": "Complete Order",
-      "fromStates": ["processing"],
-      "toState": "completed"
+      "id": "begin-internal-review", 
+      "name": "Begin Internal Compliance Review",
+      "fromStates": ["submitted"],
+      "toState": "under_internal_review"
     },
     {
-      "id": "cancel-order",
-      "name": "Cancel Order", 
-      "fromStates": ["pending", "processing"],
-      "toState": "cancelled"
+      "id": "request-revisions",
+      "name": "Request Revisions from Applicant", 
+      "fromStates": ["under_internal_review"],
+      "toState": "pending_revisions"
+    },
+    {
+      "id": "submit-revisions",
+      "name": "Submit Revised Application",
+      "fromStates": ["pending_revisions"],
+      "toState": "under_internal_review"
+    },
+    {
+      "id": "approve-for-submission",
+      "name": "Approve for Funder Submission",
+      "fromStates": ["under_internal_review"],
+      "toState": "submitted_to_funder"
+    },
+    {
+      "id": "award-grant",
+      "name": "Grant Awarded by Funder",
+      "fromStates": ["submitted_to_funder"],
+      "toState": "awarded"
+    },
+    {
+      "id": "reject-grant",
+      "name": "Grant Rejected by Funder",
+      "fromStates": ["submitted_to_funder"],
+      "toState": "rejected"
+    },
+    {
+      "id": "withdraw-application",
+      "name": "Withdraw Application",
+      "fromStates": ["drafting", "submitted", "under_internal_review", "pending_revisions"],
+      "toState": "withdrawn"
     }
   ]
 }
 ```
 
-### Step 2: Verify Workflow Creation
+### Step 2: Verify Grant Workflow Creation
 
-**Purpose**: Confirm the workflow was stored correctly and review its structure.
+**Purpose**: Confirm the grant lifecycle workflow was stored correctly and review compliance requirements.
 
 **Request:**
 ```bash
-curl -X GET http://localhost:5001/workflows/order-workflow
+curl -X GET http://localhost:5001/workflows/grant-lifecycle
 ```
 
 **Response (200 OK):**
 ```json
 {
-  "id": "order-workflow",
-  "name": "E-commerce Order Processing",
-  "states": [...],  // Same as creation response
-  "actions": [...]  // Same as creation response
+  "id": "grant-lifecycle",
+  "name": "Research Grant Application & Funding Lifecycle",
+  "states": [...],  // Same as creation response - 8 states from drafting to final outcomes
+  "actions": [...]  // Same as creation response - 8 actions for complete lifecycle management
 }
 ```
 
-### Step 3: Create a Workflow Instance
+### Step 3: Create a Grant Application Instance
 
-**Purpose**: Start a new instance of the workflow. This creates a running "case" that begins in the initial state.
+**Purpose**: Start tracking a new grant application. This creates a running "case" that begins in the drafting state.
 
 **Request:**
 ```bash
-curl -X POST http://localhost:5001/workflows/order-workflow/instances
+curl -X POST http://localhost:5001/workflows/grant-lifecycle/instances
 ```
 
 **Response (201 Created):**
 ```json
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "definitionId": "order-workflow", 
-  "currentStateId": "pending",
+  "definitionId": "grant-lifecycle", 
+  "currentStateId": "drafting",
   "history": []
 }
 ```
 
 **What Happened**: 
-- New instance created with unique GUID
-- Automatically started in "pending" state (the initial state)
-- Empty history (no actions executed yet)
+- New grant application instance created with unique GUID (serves as application ID)
+- Automatically started in "drafting" state (researchers can begin preparing their application)
+- Empty history (no review actions executed yet)
+- Ready for researcher to submit application for institutional review
 
-### Step 4: Check Instance Status
+### Step 4: Check Grant Application Status
 
-**Purpose**: Verify the instance was created and see its current state.
+**Purpose**: Verify the grant application was created and monitor its current state in the review process.
 
 **Request:**
 ```bash
@@ -301,22 +425,22 @@ curl -X GET http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef1234567890
 ```json
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "definitionId": "order-workflow",
-  "currentStateId": "pending", 
+  "definitionId": "grant-lifecycle",
+  "currentStateId": "drafting", 
   "history": []
 }
 ```
 
-### Step 5: Execute First Action (State Transition)
+### Step 5: Researcher Submits Application (State Transition)
 
-**Purpose**: Move the workflow from "pending" to "processing" state.
+**Purpose**: Researcher submits their completed grant application for institutional review.
 
 **Request:**
 ```bash
 curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef1234567890/execute \
   -H "Content-Type: application/json" \
   -d '{
-    "actionId": "start-processing"
+    "actionId": "submit-application"
   }'
 ```
 
@@ -324,12 +448,12 @@ curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef123456789
 ```json
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  "definitionId": "order-workflow",
-  "currentStateId": "processing", 
+  "definitionId": "grant-lifecycle",
+  "currentStateId": "submitted", 
   "history": [
     {
-      "actionId": "start-processing",
-      "toStateId": "processing",
+      "actionId": "submit-application",
+      "toStateId": "submitted",
       "timestamp": "2025-01-17T16:30:00Z"
     }
   ]
@@ -337,20 +461,20 @@ curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef123456789
 ```
 
 **What Happened**:
-- Current state changed: "pending" → "processing"
-- History entry added with timestamp
-- Action "start-processing" was successfully executed
+- Grant application state changed: "drafting" → "submitted"
+- History entry added with timestamp for audit trail
+- Application is now queued for institutional compliance review (fEC/TRAC)
 
-### Step 6: Execute Second Action (Complete the Order)
+### Step 6: Begin Internal Compliance Review (fEC/TRAC)
 
-**Purpose**: Move from "processing" to final "completed" state.
+**Purpose**: Institutional review office begins compliance review for fEC, TRAC, and other requirements.
 
 **Request:**
 ```bash
 curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef1234567890/execute \
   -H "Content-Type: application/json" \
   -d '{
-    "actionId": "complete-order"
+    "actionId": "begin-internal-review"
   }'
 ```
 
@@ -358,17 +482,17 @@ curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef123456789
 ```json
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890", 
-  "definitionId": "order-workflow",
-  "currentStateId": "completed",
+  "definitionId": "grant-lifecycle",
+  "currentStateId": "under_internal_review",
   "history": [
     {
-      "actionId": "start-processing",
-      "toStateId": "processing", 
+      "actionId": "submit-application",
+      "toStateId": "submitted", 
       "timestamp": "2025-01-17T16:30:00Z"
     },
     {
-      "actionId": "complete-order",
-      "toStateId": "completed",
+      "actionId": "begin-internal-review",
+      "toStateId": "under_internal_review",
       "timestamp": "2025-01-17T16:31:00Z"
     }
   ]
@@ -376,66 +500,85 @@ curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef123456789
 ```
 
 **What Happened**:
-- Current state changed: "processing" → "completed"  
-- Second history entry added
-- Workflow is now in final state (no more actions possible)
+- Grant application state changed: "submitted" → "under_internal_review"  
+- Second history entry added showing review process initiation
+- Application is now undergoing institutional compliance checks (fEC, TRAC, etc.)
+- Review office can now either approve for submission or request revisions
 
-### Step 7: Attempt Invalid Action (Should Fail)
+### Step 7: Attempt Invalid Action (Validation Demo)
 
-**Purpose**: Demonstrate validation - trying to execute action on completed (final) instance.
+**Purpose**: Demonstrate business rule validation - trying to award a grant before it's submitted to funder.
 
 **Request:**
 ```bash
 curl -X POST http://localhost:5001/instances/a1b2c3d4-e5f6-7890-abcd-ef1234567890/execute \
   -H "Content-Type: application/json" \
   -d '{
-    "actionId": "cancel-order"
+    "actionId": "award-grant"
   }'
 ```
 
 **Response (400 Bad Request):**
 ```json
 {
-  "error": "Cannot execute action on an instance in a final state."
+  "error": "Action 'award-grant' cannot be executed from state 'under_internal_review'."
 }
 ```
 
 **What Happened**:
-- Validation correctly prevented invalid action
-- Business rule enforced: no actions allowed on final states
-- Error message clearly explains why action was rejected
+- Validation correctly prevented invalid state transition
+- Business rule enforced: grants can only be awarded after external submission
+- Institutional review process must be completed before funder submission
+- Error message clearly explains the compliance violation
 
-## Complete State Transition Examples
+## Complete Grant Application Lifecycle Examples
 
-### Example A: Successful Order Flow
+### Example A: Successful Grant Award Flow
 ```
-Initial State: pending
-Execute "start-processing" → processing
-Execute "complete-order" → completed (final)
-Result: ✅ Successful order completion
-```
-
-### Example B: Cancelled Order Flow  
-```
-Initial State: pending
-Execute "cancel-order" → cancelled (final)
-Result: ✅ Order cancelled before processing
+Initial State: drafting
+Execute "submit-application" → submitted
+Execute "begin-internal-review" → under_internal_review
+Execute "approve-for-submission" → submitted_to_funder
+Execute "award-grant" → awarded (final)
+Result: ✅ Grant successfully awarded with full compliance
 ```
 
-### Example C: Processing Cancellation
+### Example B: Grant Application with Revisions
 ```
-Initial State: pending  
-Execute "start-processing" → processing
-Execute "cancel-order" → cancelled (final)
-Result: ✅ Order cancelled during processing
+Initial State: drafting
+Execute "submit-application" → submitted
+Execute "begin-internal-review" → under_internal_review
+Execute "request-revisions" → pending_revisions
+Execute "submit-revisions" → under_internal_review
+Execute "approve-for-submission" → submitted_to_funder
+Execute "award-grant" → awarded (final)
+Result: ✅ Grant awarded after revision cycle
 ```
 
-### Example D: Invalid Transition (Error)
+### Example C: Grant Rejection Flow
 ```
-Initial State: pending
-Execute "complete-order" → ERROR! 
-Reason: "complete-order" not allowed from "pending" state
-Result: ❌ 400 Bad Request
+Initial State: drafting
+Execute "submit-application" → submitted
+Execute "begin-internal-review" → under_internal_review
+Execute "approve-for-submission" → submitted_to_funder
+Execute "reject-grant" → rejected (final)
+Result: ✅ Grant rejected by external funder
+```
+
+### Example D: Early Withdrawal
+```
+Initial State: drafting
+Execute "submit-application" → submitted
+Execute "withdraw-application" → withdrawn (final)
+Result: ✅ Application withdrawn during institutional review
+```
+
+### Example E: Invalid Transition (Compliance Error)
+```
+Initial State: under_internal_review
+Execute "award-grant" → ERROR! 
+Reason: "award-grant" not allowed from "under_internal_review" state
+Result: ❌ 400 Bad Request - Must go through funder submission first
 ```
 
 ## Error Handling and Troubleshooting

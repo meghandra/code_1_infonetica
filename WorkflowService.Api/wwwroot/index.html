@@ -215,8 +215,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔄 Workflow State Machine API</h1>
-            <p>Interactive Frontend for Testing API Endpoints</p>
+            <h1>📋 Grant Application Lifecycle Management</h1>
+            <p>Interactive Frontend for Research Grant Applications & Funding Workflows</p>
         </div>
 
         <div class="content">
@@ -231,75 +231,129 @@
 
             <!-- Stored Data Display -->
             <div class="stored-data">
-                <h4>📊 Stored Data</h4>
-                <div><strong>Last Created Workflow ID:</strong> <span id="lastWorkflowId">None</span></div>
-                <div><strong>Last Created Instance ID:</strong> <span id="lastInstanceId">None</span></div>
+                <h4>📊 Grant Application Tracking</h4>
+                <div><strong>Active Grant Lifecycle ID:</strong> <span id="lastWorkflowId">None</span></div>
+                <div><strong>Current Application ID:</strong> <span id="lastInstanceId">None</span></div>
             </div>
 
-            <!-- 1. Create Workflow Definition -->
+            <!-- 1. Create Grant Lifecycle Definition -->
             <div class="endpoint-section">
                 <div class="endpoint-header">
                     <span class="method-badge method-post">POST</span>
-                    <span class="endpoint-title">Create Workflow Definition</span>
+                    <span class="endpoint-title">Create Grant Lifecycle Definition</span>
                 </div>
                 <div class="endpoint-url">/workflows</div>
                 
                 <div class="request-body">
                     <label>Request Body (JSON):</label>
                     <textarea id="createWorkflowBody">{
-  "id": "order-workflow",
-  "name": "Order Processing Workflow",
+  "id": "grant-lifecycle",
+  "name": "Research Grant Application & Funding Lifecycle",
   "states": [
     {
-      "id": "pending",
-      "name": "Pending Order",
+      "id": "drafting",
+      "name": "Application Drafting",
       "isInitial": true,
       "isFinal": false
     },
     {
-      "id": "processing",
-      "name": "Processing Order",
+      "id": "submitted",
+      "name": "Submitted for Review",
       "isInitial": false,
       "isFinal": false
     },
     {
-      "id": "completed",
-      "name": "Order Completed",
+      "id": "under_internal_review",
+      "name": "Under Internal Review (fEC/TRAC)",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "pending_revisions",
+      "name": "Pending Revisions",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "submitted_to_funder",
+      "name": "Submitted to External Funder",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "awarded",
+      "name": "Grant Awarded",
       "isInitial": false,
       "isFinal": true
     },
     {
-      "id": "cancelled",
-      "name": "Order Cancelled",
+      "id": "rejected",
+      "name": "Grant Rejected",
+      "isInitial": false,
+      "isFinal": true
+    },
+    {
+      "id": "withdrawn",
+      "name": "Application Withdrawn",
       "isInitial": false,
       "isFinal": true
     }
   ],
   "actions": [
     {
-      "id": "start-processing",
-      "name": "Start Processing",
-      "fromStates": ["pending"],
-      "toState": "processing"
+      "id": "submit-application",
+      "name": "Submit Application for Review",
+      "fromStates": ["drafting"],
+      "toState": "submitted"
     },
     {
-      "id": "complete-order",
-      "name": "Complete Order",
-      "fromStates": ["processing"],
-      "toState": "completed"
+      "id": "begin-internal-review",
+      "name": "Begin Internal Compliance Review",
+      "fromStates": ["submitted"],
+      "toState": "under_internal_review"
     },
     {
-      "id": "cancel-order",
-      "name": "Cancel Order",
-      "fromStates": ["pending", "processing"],
-      "toState": "cancelled"
+      "id": "request-revisions",
+      "name": "Request Revisions from Applicant",
+      "fromStates": ["under_internal_review"],
+      "toState": "pending_revisions"
+    },
+    {
+      "id": "submit-revisions",
+      "name": "Submit Revised Application",
+      "fromStates": ["pending_revisions"],
+      "toState": "under_internal_review"
+    },
+    {
+      "id": "approve-for-submission",
+      "name": "Approve for Funder Submission",
+      "fromStates": ["under_internal_review"],
+      "toState": "submitted_to_funder"
+    },
+    {
+      "id": "award-grant",
+      "name": "Grant Awarded by Funder",
+      "fromStates": ["submitted_to_funder"],
+      "toState": "awarded"
+    },
+    {
+      "id": "reject-grant",
+      "name": "Grant Rejected by Funder",
+      "fromStates": ["submitted_to_funder"],
+      "toState": "rejected"
+    },
+    {
+      "id": "withdraw-application",
+      "name": "Withdraw Application",
+      "fromStates": ["drafting", "submitted", "under_internal_review", "pending_revisions"],
+      "toState": "withdrawn"
     }
   ]
 }</textarea>
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="createWorkflow()">🚀 Create Workflow</button>
+                    <button class="btn btn-primary" onclick="createWorkflow()">🚀 Create Grant Lifecycle</button>
                 </div>
 
                 <div id="createWorkflowResponse" class="response-area">
@@ -311,21 +365,21 @@
                 </div>
             </div>
 
-            <!-- 2. Get Workflow Definition -->
+            <!-- 2. Get Grant Lifecycle Definition -->
             <div class="endpoint-section">
                 <div class="endpoint-header">
                     <span class="method-badge method-get">GET</span>
-                    <span class="endpoint-title">Get Workflow Definition</span>
+                    <span class="endpoint-title">Get Grant Lifecycle Definition</span>
                 </div>
                 <div class="endpoint-url">/workflows/{definitionId}</div>
                 
                 <div class="request-body">
-                    <label>Workflow ID:</label>
-                    <input type="text" id="getWorkflowId" value="order-workflow" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
+                    <label>Grant Lifecycle ID:</label>
+                    <input type="text" id="getWorkflowId" value="grant-lifecycle" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="getWorkflow()">📋 Get Workflow</button>
+                    <button class="btn btn-primary" onclick="getWorkflow()">📋 Get Grant Lifecycle</button>
                 </div>
 
                 <div id="getWorkflowResponse" class="response-area">
@@ -337,21 +391,21 @@
                 </div>
             </div>
 
-            <!-- 3. Create Workflow Instance -->
+            <!-- 3. Create Grant Application Instance -->
             <div class="endpoint-section">
                 <div class="endpoint-header">
                     <span class="method-badge method-post">POST</span>
-                    <span class="endpoint-title">Start Workflow Instance</span>
+                    <span class="endpoint-title">Start New Grant Application</span>
                 </div>
                 <div class="endpoint-url">/workflows/{definitionId}/instances</div>
                 
                 <div class="request-body">
-                    <label>Workflow ID:</label>
-                    <input type="text" id="startInstanceWorkflowId" value="order-workflow" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
+                    <label>Grant Lifecycle ID:</label>
+                    <input type="text" id="startInstanceWorkflowId" value="grant-lifecycle" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="startInstance()">🎯 Start Instance</button>
+                    <button class="btn btn-primary" onclick="startInstance()">🎯 Start Grant Application</button>
                 </div>
 
                 <div id="startInstanceResponse" class="response-area">
@@ -363,21 +417,21 @@
                 </div>
             </div>
 
-            <!-- 4. Get Instance Details -->
+            <!-- 4. Get Grant Application Status -->
             <div class="endpoint-section">
                 <div class="endpoint-header">
                     <span class="method-badge method-get">GET</span>
-                    <span class="endpoint-title">Get Instance Details</span>
+                    <span class="endpoint-title">Get Grant Application Status</span>
                 </div>
                 <div class="endpoint-url">/instances/{instanceId}</div>
                 
                 <div class="request-body">
-                    <label>Instance ID:</label>
-                    <input type="text" id="getInstanceId" placeholder="Instance ID will be filled automatically" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
+                    <label>Application ID:</label>
+                    <input type="text" id="getInstanceId" placeholder="Application ID will be filled automatically" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
                 </div>
 
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="getInstance()">👁️ Get Instance</button>
+                    <button class="btn btn-primary" onclick="getInstance()">👁️ Check Application Status</button>
                 </div>
 
                 <div id="getInstanceResponse" class="response-area">
@@ -389,29 +443,30 @@
                 </div>
             </div>
 
-            <!-- 5. Execute Action -->
+            <!-- 5. Execute Grant Action -->
             <div class="endpoint-section">
                 <div class="endpoint-header">
                     <span class="method-badge method-post">POST</span>
-                    <span class="endpoint-title">Execute Action</span>
+                    <span class="endpoint-title">Execute Grant Application Action</span>
                 </div>
                 <div class="endpoint-url">/instances/{instanceId}/execute</div>
                 
                 <div class="request-body">
-                    <label>Instance ID:</label>
-                    <input type="text" id="executeInstanceId" placeholder="Instance ID will be filled automatically" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px; margin-bottom: 10px;">
+                    <label>Application ID:</label>
+                    <input type="text" id="executeInstanceId" placeholder="Application ID will be filled automatically" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px; margin-bottom: 10px;">
                     
                     <label>Action to Execute (JSON):</label>
                     <textarea id="executeActionBody">{
-  "actionId": "start-processing"
+  "actionId": "submit-application"
 }</textarea>
                 </div>
 
                 <div class="button-group">
                     <button class="btn btn-primary" onclick="executeAction()">⚡ Execute Action</button>
-                    <button class="btn btn-secondary" onclick="setAction('start-processing')">▶️ Start Processing</button>
-                    <button class="btn btn-secondary" onclick="setAction('complete-order')">✅ Complete Order</button>
-                    <button class="btn btn-secondary" onclick="setAction('cancel-order')">❌ Cancel Order</button>
+                    <button class="btn btn-secondary" onclick="setAction('submit-application')">📤 Submit Application</button>
+                    <button class="btn btn-secondary" onclick="setAction('begin-internal-review')">🔍 Begin Review</button>
+                    <button class="btn btn-secondary" onclick="setAction('approve-for-submission')">✅ Approve for Submission</button>
+                    <button class="btn btn-secondary" onclick="setAction('award-grant')">🎉 Award Grant</button>
                 </div>
 
                 <div id="executeActionResponse" class="response-area">
@@ -588,8 +643,8 @@
 
         function loadExampleData() {
             // Reset to example data
-            document.getElementById('getWorkflowId').value = 'order-workflow';
-            document.getElementById('startInstanceWorkflowId').value = 'order-workflow';
+            document.getElementById('getWorkflowId').value = 'grant-lifecycle';
+            document.getElementById('startInstanceWorkflowId').value = 'grant-lifecycle';
             
             // Clear stored IDs
             lastWorkflowId = '';
