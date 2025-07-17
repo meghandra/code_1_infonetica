@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow State Machine API - Frontend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .endpoint-section {
+            margin-bottom: 40px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            padding: 25px;
+            background: #fafafa;
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .method-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 15px;
+            color: white;
+        }
+
+        .method-get { background: #28a745; }
+        .method-post { background: #007bff; }
+
+        .endpoint-title {
+            font-size: 1.3rem;
+            color: #333;
+        }
+
+        .endpoint-url {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .request-body {
+            margin-bottom: 15px;
+        }
+
+        .request-body label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .request-body textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .response-area {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            min-height: 60px;
+        }
+
+        .response-area.success {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .response-area.error {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .response-content {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        .global-actions {
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .stored-data {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        .stored-data h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .data-item {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Workflow State Machine API</h1>
+            <p>Interactive Frontend for Testing API Endpoints</p>
+        </div>
+
+        <div class="content">
+            <!-- Global Actions -->
+            <div class="global-actions">
+                <h3>🎯 Quick Actions</h3>
+                <div class="button-group" style="justify-content: center; margin-top: 15px;">
+                    <button class="btn btn-secondary" onclick="clearAllResponses()">Clear All Responses</button>
+                    <button class="btn btn-secondary" onclick="loadExampleData()">Load Example Data</button>
+                </div>
+            </div>
+
+            <!-- Stored Data Display -->
+            <div class="stored-data">
+                <h4>📊 Stored Data</h4>
+                <div><strong>Last Created Workflow ID:</strong> <span id="lastWorkflowId">None</span></div>
+                <div><strong>Last Created Instance ID:</strong> <span id="lastInstanceId">None</span></div>
+            </div>
+
+            <!-- 1. Create Workflow Definition -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="method-badge method-post">POST</span>
+                    <span class="endpoint-title">Create Workflow Definition</span>
+                </div>
+                <div class="endpoint-url">/workflows</div>
+                
+                <div class="request-body">
+                    <label>Request Body (JSON):</label>
+                    <textarea id="createWorkflowBody">{
+  "id": "order-workflow",
+  "name": "Order Processing Workflow",
+  "states": [
+    {
+      "id": "pending",
+      "name": "Pending Order",
+      "isInitial": true,
+      "isFinal": false
+    },
+    {
+      "id": "processing",
+      "name": "Processing Order",
+      "isInitial": false,
+      "isFinal": false
+    },
+    {
+      "id": "completed",
+      "name": "Order Completed",
+      "isInitial": false,
+      "isFinal": true
+    },
+    {
+      "id": "cancelled",
+      "name": "Order Cancelled",
+      "isInitial": false,
+      "isFinal": true
+    }
+  ],
+  "actions": [
+    {
+      "id": "start-processing",
+      "name": "Start Processing",
+      "fromStates": ["pending"],
+      "toState": "processing"
+    },
+    {
+      "id": "complete-order",
+      "name": "Complete Order",
+      "fromStates": ["processing"],
+      "toState": "completed"
+    },
+    {
+      "id": "cancel-order",
+      "name": "Cancel Order",
+      "fromStates": ["pending", "processing"],
+      "toState": "cancelled"
+    }
+  ]
+}</textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="createWorkflow()">🚀 Create Workflow</button>
+                </div>
+
+                <div id="createWorkflowResponse" class="response-area">
+                    <div class="status-bar">
+                        <span>Response:</span>
+                        <span id="createWorkflowStatus"></span>
+                    </div>
+                    <div class="response-content" id="createWorkflowContent">Click "Create Workflow" to test this endpoint</div>
+                </div>
+            </div>
+
+            <!-- 2. Get Workflow Definition -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="method-badge method-get">GET</span>
+                    <span class="endpoint-title">Get Workflow Definition</span>
+                </div>
+                <div class="endpoint-url">/workflows/{definitionId}</div>
+                
+                <div class="request-body">
+                    <label>Workflow ID:</label>
+                    <input type="text" id="getWorkflowId" value="order-workflow" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="getWorkflow()">📋 Get Workflow</button>
+                </div>
+
+                <div id="getWorkflowResponse" class="response-area">
+                    <div class="status-bar">
+                        <span>Response:</span>
+                        <span id="getWorkflowStatus"></span>
+                    </div>
+                    <div class="response-content" id="getWorkflowContent">Click "Get Workflow" to test this endpoint</div>
+                </div>
+            </div>
+
+            <!-- 3. Create Workflow Instance -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="method-badge method-post">POST</span>
+                    <span class="endpoint-title">Start Workflow Instance</span>
+                </div>
+                <div class="endpoint-url">/workflows/{definitionId}/instances</div>
+                
+                <div class="request-body">
+                    <label>Workflow ID:</label>
+                    <input type="text" id="startInstanceWorkflowId" value="order-workflow" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="startInstance()">🎯 Start Instance</button>
+                </div>
+
+                <div id="startInstanceResponse" class="response-area">
+                    <div class="status-bar">
+                        <span>Response:</span>
+                        <span id="startInstanceStatus"></span>
+                    </div>
+                    <div class="response-content" id="startInstanceContent">Click "Start Instance" to test this endpoint</div>
+                </div>
+            </div>
+
+            <!-- 4. Get Instance Details -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="method-badge method-get">GET</span>
+                    <span class="endpoint-title">Get Instance Details</span>
+                </div>
+                <div class="endpoint-url">/instances/{instanceId}</div>
+                
+                <div class="request-body">
+                    <label>Instance ID:</label>
+                    <input type="text" id="getInstanceId" placeholder="Instance ID will be filled automatically" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px;">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="getInstance()">👁️ Get Instance</button>
+                </div>
+
+                <div id="getInstanceResponse" class="response-area">
+                    <div class="status-bar">
+                        <span>Response:</span>
+                        <span id="getInstanceStatus"></span>
+                    </div>
+                    <div class="response-content" id="getInstanceContent">Click "Get Instance" to test this endpoint</div>
+                </div>
+            </div>
+
+            <!-- 5. Execute Action -->
+            <div class="endpoint-section">
+                <div class="endpoint-header">
+                    <span class="method-badge method-post">POST</span>
+                    <span class="endpoint-title">Execute Action</span>
+                </div>
+                <div class="endpoint-url">/instances/{instanceId}/execute</div>
+                
+                <div class="request-body">
+                    <label>Instance ID:</label>
+                    <input type="text" id="executeInstanceId" placeholder="Instance ID will be filled automatically" style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 5px; margin-bottom: 10px;">
+                    
+                    <label>Action to Execute (JSON):</label>
+                    <textarea id="executeActionBody">{
+  "actionId": "start-processing"
+}</textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="executeAction()">⚡ Execute Action</button>
+                    <button class="btn btn-secondary" onclick="setAction('start-processing')">▶️ Start Processing</button>
+                    <button class="btn btn-secondary" onclick="setAction('complete-order')">✅ Complete Order</button>
+                    <button class="btn btn-secondary" onclick="setAction('cancel-order')">❌ Cancel Order</button>
+                </div>
+
+                <div id="executeActionResponse" class="response-area">
+                    <div class="status-bar">
+                        <span>Response:</span>
+                        <span id="executeActionStatus"></span>
+                    </div>
+                    <div class="response-content" id="executeActionContent">Click "Execute Action" to test this endpoint</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5001';
+        let lastWorkflowId = '';
+        let lastInstanceId = '';
+
+        // Helper function to make API calls
+        async function makeApiCall(method, url, body = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(API_BASE + url, options);
+                const data = await response.text();
+                
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(data);
+                } catch {
+                    jsonData = data;
+                }
+
+                return {
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: jsonData
+                };
+            } catch (error) {
+                return {
+                    status: 0,
+                    statusText: 'Network Error',
+                    data: { error: error.message }
+                };
+            }
+        }
+
+        // Update response display
+        function updateResponse(elementId, statusElementId, result) {
+            const responseElement = document.getElementById(elementId);
+            const statusElement = document.getElementById(statusElementId);
+            const contentElement = document.getElementById(elementId.replace('Response', 'Content'));
+
+            if (result.status >= 200 && result.status < 300) {
+                responseElement.className = 'response-area success';
+                statusElement.textContent = `${result.status} ${result.statusText}`;
+            } else {
+                responseElement.className = 'response-area error';
+                statusElement.textContent = `${result.status} ${result.statusText}`;
+            }
+
+            contentElement.textContent = typeof result.data === 'object' ? 
+                JSON.stringify(result.data, null, 2) : result.data;
+        }
+
+        // API Functions
+        async function createWorkflow() {
+            const body = document.getElementById('createWorkflowBody').value;
+            let parsedBody;
+            
+            try {
+                parsedBody = JSON.parse(body);
+            } catch (error) {
+                alert('Invalid JSON in request body');
+                return;
+            }
+
+            const result = await makeApiCall('POST', '/workflows', parsedBody);
+            updateResponse('createWorkflowResponse', 'createWorkflowStatus', result);
+            
+            if (result.status >= 200 && result.status < 300 && result.data.id) {
+                lastWorkflowId = result.data.id;
+                document.getElementById('lastWorkflowId').textContent = lastWorkflowId;
+                document.getElementById('getWorkflowId').value = lastWorkflowId;
+                document.getElementById('startInstanceWorkflowId').value = lastWorkflowId;
+            }
+        }
+
+        async function getWorkflow() {
+            const workflowId = document.getElementById('getWorkflowId').value;
+            if (!workflowId) {
+                alert('Please enter a workflow ID');
+                return;
+            }
+
+            const result = await makeApiCall('GET', `/workflows/${workflowId}`);
+            updateResponse('getWorkflowResponse', 'getWorkflowStatus', result);
+        }
+
+        async function startInstance() {
+            const workflowId = document.getElementById('startInstanceWorkflowId').value;
+            if (!workflowId) {
+                alert('Please enter a workflow ID');
+                return;
+            }
+
+            const result = await makeApiCall('POST', `/workflows/${workflowId}/instances`);
+            updateResponse('startInstanceResponse', 'startInstanceStatus', result);
+            
+            if (result.status >= 200 && result.status < 300 && result.data.id) {
+                lastInstanceId = result.data.id;
+                document.getElementById('lastInstanceId').textContent = lastInstanceId;
+                document.getElementById('getInstanceId').value = lastInstanceId;
+                document.getElementById('executeInstanceId').value = lastInstanceId;
+            }
+        }
+
+        async function getInstance() {
+            const instanceId = document.getElementById('getInstanceId').value;
+            if (!instanceId) {
+                alert('Please enter an instance ID');
+                return;
+            }
+
+            const result = await makeApiCall('GET', `/instances/${instanceId}`);
+            updateResponse('getInstanceResponse', 'getInstanceStatus', result);
+        }
+
+        async function executeAction() {
+            const instanceId = document.getElementById('executeInstanceId').value;
+            const body = document.getElementById('executeActionBody').value;
+            
+            if (!instanceId) {
+                alert('Please enter an instance ID');
+                return;
+            }
+
+            let parsedBody;
+            try {
+                parsedBody = JSON.parse(body);
+            } catch (error) {
+                alert('Invalid JSON in request body');
+                return;
+            }
+
+            const result = await makeApiCall('POST', `/instances/${instanceId}/execute`, parsedBody);
+            updateResponse('executeActionResponse', 'executeActionStatus', result);
+        }
+
+        // Helper functions
+        function setAction(actionId) {
+            document.getElementById('executeActionBody').value = JSON.stringify({ actionId: actionId }, null, 2);
+        }
+
+        function clearAllResponses() {
+            const responseAreas = document.querySelectorAll('.response-area');
+            responseAreas.forEach(area => {
+                area.className = 'response-area';
+                const content = area.querySelector('.response-content');
+                const status = area.querySelector('.status-bar span:last-child');
+                content.textContent = 'Ready to test...';
+                status.textContent = '';
+            });
+        }
+
+        function loadExampleData() {
+            // Reset to example data
+            document.getElementById('getWorkflowId').value = 'order-workflow';
+            document.getElementById('startInstanceWorkflowId').value = 'order-workflow';
+            
+            // Clear stored IDs
+            lastWorkflowId = '';
+            lastInstanceId = '';
+            document.getElementById('lastWorkflowId').textContent = 'None';
+            document.getElementById('lastInstanceId').textContent = 'None';
+        }
+
+        // Initialize page
+        window.onload = function() {
+            loadExampleData();
+        };
+    </script>
+</body>
+</html> 
